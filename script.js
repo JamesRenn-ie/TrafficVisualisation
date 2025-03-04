@@ -1,12 +1,11 @@
 const canvas = document.getElementById("trafficCanvas");
 const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
-canvas.height = window.innerHeight-100;
+canvas.height = window.innerHeight - 100;
 
 let nodes = []; // Stores intersections
 let edges = []; // Stores roads
 
-// adding roads at mouse cursor when R pressed
 let selectedNode = null;
 let mouseX = 0, mouseY = 0;
 
@@ -54,10 +53,10 @@ function addRoadFromSelected() {
     drawGraph();
 }
 
-//adding random roads
-function addNode(x, y) {
+// Add a node with a specific type (source, sink, or neutral)
+function addNode(x, y, type = 'neutral') {
     const id = nodes.length;
-    nodes.push({ id, x, y });
+    nodes.push({ id, x, y, type, demandIn: 0, demandOut: 0 });
     return id;
 }
 
@@ -66,31 +65,50 @@ function addEdge(startNode, endNode) {
     edges.push({ startNode, endNode, traffic: Math.random() });
 }
 
-// Create initial node
-addNode(canvas.width / 2, canvas.height / 2);
+// Create initial nodes (1 source, 1 neutral, and 1 sink)
+addNode(canvas.width / 2, canvas.height / 2, 'source');  // Source Node
+addNode(canvas.width / 3, canvas.height / 3, 'neutral');  // Neutral Node
+addNode(2 * canvas.width / 3, canvas.height / 3, 'sink');  // Sink Node
 
-function addRoad() {
-    if (nodes.length === 0) return;
+function calculateTrafficFlow() {
+    edges.forEach(edge => {
+        const startNode = nodes[edge.startNode];
+        const endNode = nodes[edge.endNode];
 
-    // Pick a random existing node as the start
-    let startNode = nodes[Math.floor(Math.random() * nodes.length)];
+        let flow = 0;
 
-    let newNode;
-    if (Math.random() < 0.5 && nodes.length > 1) {
-        // Connect to another existing node
-        do {
-            newNode = nodes[Math.floor(Math.random() * nodes.length)];
-        } while (newNode.id === startNode.id);
-    } else {
-        // Create a new node at a random position
-        let x = Math.random() * canvas.width;
-        let y = Math.random() * canvas.height;
-        newNode = { id: nodes.length, x, y };
-        nodes.push(newNode);
-    }
+        // Handle source node: always create traffic
+        if (startNode.type === 'source') {
+            flow = Math.min(startNode.demandOut, edge.traffic * 100); // Flow is limited by demandOut or road capacity
+            edge.traffic = flow;  // Update road traffic
+            startNode.demandOut -= flow;  // Subtract traffic generated
+        }
 
-    addEdge(startNode.id, newNode.id);
-    drawGraph();
+        // Handle sink node: always consume traffic
+        else if (endNode.type === 'sink') {
+            flow = Math.min(endNode.demandIn, edge.traffic * 100);  // Flow is limited by demandIn or road capacity
+            edge.traffic = flow;  // Update road traffic
+            endNode.demandIn -= flow;  // Subtract traffic consumed
+        }
+
+        // Handle neutral node: traffic is transferred based on road capacity
+        else if (startNode.type === 'neutral' && endNode.type === 'neutral') {
+            flow = Math.min(edge.traffic * 100, Math.min(startNode.demandOut, endNode.demandIn));
+            edge.traffic = flow;  // Update road traffic
+            startNode.demandOut -= flow;  // Subtract traffic transferred
+            endNode.demandIn -= flow;  // Add traffic to destination node
+        }
+
+        // Update the nodes after flow calculation
+        endNode.demandIn += flow;  // Add traffic to the destination node
+        startNode.demandOut -= flow;  // Subtract traffic from the start node
+    });
+
+    // Print the results of the flow calculation
+    console.log("Traffic Flow Calculation:");
+    edges.forEach(edge => {
+        console.log(`Road from Node ${edge.startNode} to Node ${edge.endNode}: ${edge.traffic} traffic`);
+    });
 }
 
 function drawGraph() {
@@ -112,19 +130,56 @@ function drawGraph() {
 
     // Draw nodes (intersections)
     nodes.forEach(node => {
-        ctx.fillStyle = "white";
+        let nodeColor = node.type === 'source' ? 'green' : node.type === 'sink' ? 'red' : 'white';
+        ctx.fillStyle = nodeColor;
         ctx.beginPath();
         ctx.arc(node.x, node.y, 5, 0, Math.PI * 2);
         ctx.fill();
     });
 }
 
+// Simulate traffic changes
 function updateTraffic() {
+    // Loop through edges to calculate traffic flow for each road
     edges.forEach(edge => {
-        edge.traffic = Math.random(); // Simulate traffic changes
+        const startNode = nodes[edge.startNode];
+        const endNode = nodes[edge.endNode];
+
+        // Handle source node: always generate traffic
+        if (startNode.type === 'source') {
+            let generatedTraffic = Math.min(startNode.demandOut, 1); // Limit generated traffic to demandOut
+            edge.traffic = generatedTraffic;
+            startNode.demandOut -= generatedTraffic; // Subtract traffic generated
+        }
+        // Handle sink node: always consume traffic
+        else if (endNode.type === 'sink') {
+            let consumedTraffic = Math.min(endNode.demandIn, edge.traffic); // Limit consumed traffic to demandIn
+            edge.traffic = consumedTraffic;
+            endNode.demandIn -= consumedTraffic; // Subtract traffic consumed
+        }
+        // Handle neutral node: just transfer traffic
+        else if (startNode.type === 'neutral' && endNode.type === 'neutral') {
+            let flowThrough = Math.min(edge.traffic, Math.min(startNode.demandOut, endNode.demandIn));
+            edge.traffic = flowThrough;
+            startNode.demandOut -= flowThrough;  // Subtract traffic transferred
+            endNode.demandIn -= flowThrough;  // Add traffic to destination node
+        }
     });
+
+    // Update the flow for each node: demandOut decreases for source nodes and demandIn decreases for sink nodes
+    nodes.forEach(node => {
+        if (node.type === 'source') {
+            node.demandOut = Math.min(node.demandOut, 1); // Limit max outgoing traffic from source
+        }
+        if (node.type === 'sink') {
+            node.demandIn = Math.min(node.demandIn, 1); // Limit max incoming traffic to sink
+        }
+    });
+
+    // Redraw the graph after traffic update
     drawGraph();
 }
+
 
 setInterval(updateTraffic, 1000);
 drawGraph();
