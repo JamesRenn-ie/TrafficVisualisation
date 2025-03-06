@@ -49,21 +49,107 @@ function findClosestNode(x, y, threshold = 10) {
 }
 
 //allows you to draw a road from an existing node that is selected
+//allows you to draw a road from an existing node that is selected
 function addRoadFromSelected() {
     let targetNode = findClosestNode(mouseX, mouseY);
 
     if (targetNode && targetNode.id !== selectedNode.id) {
         // If the cursor is on an existing node, connect to it
-        addEdge(selectedNode.id, targetNode.id);
-        selectedNode = targetNode; // Set new selection to this node
+        if (canCreateRoad(selectedNode.id, targetNode.id)) {
+            addEdge(selectedNode.id, targetNode.id);
+            selectedNode = targetNode; // Set new selection to this node
+        }
     } else {
-        // Otherwise, create a new node and connect to it
-        let newNode = addNode(mouseX, mouseY);
-        addEdge(selectedNode.id, newNode);
-        selectedNode = nodes[newNode]; // Set the new node as the selected node
+        // Check if a road to this new position would be valid
+        if (canCreateRoadToPosition(selectedNode.id, mouseX, mouseY)) {
+            // Create a new node and connect to it
+            let newNode = addNode(mouseX, mouseY);
+            addEdge(selectedNode.id, newNode);
+            selectedNode = nodes[newNode]; // Set the new node as the selected node
+        }
     }
 
     drawGraph();
+}
+
+// Helper function to check if a road can be created between two existing nodes
+function canCreateRoad(startNodeId, endNodeId) {
+    const start = nodes.find(node => node.id === startNodeId);
+    const end = nodes.find(node => node.id === endNodeId);
+    
+    if (!start || !end) return false;
+    
+    // Check if this road would pass through any other node
+    for (let node of nodes) {
+        // Skip the start and end nodes
+        if (node.id === startNodeId || node.id === endNodeId) continue;
+        
+        // Check if this node is on the line segment between start and end
+        if (isPointOnLineSegment(start.x, start.y, end.x, end.y, node.x, node.y)) {
+            return false;
+        }
+    }
+    
+    // Check if this road would intersect with any existing road
+    for (let edge of edges) {
+        const roadStart = nodes.find(node => node.id === edge.startNode);
+        const roadEnd = nodes.find(node => node.id === edge.endNode);
+        
+        // Skip checking if they share a node (roads naturally intersect at shared nodes)
+        if (startNodeId === edge.startNode || startNodeId === edge.endNode || 
+            endNodeId === edge.startNode || endNodeId === edge.endNode) {
+            continue;
+        }
+        
+        // Check if the lines intersect
+        if (doLinesIntersect(
+            start.x, start.y, end.x, end.y,
+            roadStart.x, roadStart.y, roadEnd.x, roadEnd.y
+        )) {
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+// Helper function to check if a road can be created to a new position
+function canCreateRoadToPosition(startNodeId, endX, endY) {
+    const start = nodes.find(node => node.id === startNodeId);
+    
+    if (!start) return false;
+    
+    // Check if this road would pass through any other node
+    for (let node of nodes) {
+        // Skip the start node
+        if (node.id === startNodeId) continue;
+        
+        // Check if this node is on the line segment between start and new position
+        if (isPointOnLineSegment(start.x, start.y, endX, endY, node.x, node.y)) {
+            return false;
+        }
+    }
+    
+    // Check if this road would intersect with any existing road
+    for (let edge of edges) {
+        const roadStart = nodes.find(node => node.id === edge.startNode);
+        const roadEnd = nodes.find(node => node.id === edge.endNode);
+        
+        // Skip checking if they share the start node
+        if (startNodeId === edge.startNode || startNodeId === edge.endNode) {
+            continue;
+        }
+        
+        // Check if the lines intersect
+        if (doLinesIntersect(
+            start.x, start.y, endX, endY,
+            roadStart.x, roadStart.y, roadEnd.x, roadEnd.y
+        )) {
+            return false;
+        }
+    }
+    
+    return true;
 }
 
 //will draw a blue road for an unconfirmes road
@@ -72,14 +158,54 @@ function displayUncomfirmedRoad(startNodeId) {
 
     let start = nodes.find(node => node.id === startNodeId);
     if (!start) return;
-        let color = `rgb(0, 100, 255, 0.5)`; //0.5 is transparency
+    
+    let intersects = false;
+    
+    // Check if this potential road would pass through any other node
+    for (let node of nodes) {
+        // Skip the start node
+        if (node.id === startNodeId) continue;
+        
+        // Check if this node is on the line segment between start and mouse
+        if (isPointOnLineSegment(start.x, start.y, mouseX, mouseY, node.x, node.y)) {
+            intersects = true;
+            break;
+        }
+    }
+    
+    // Check if this potential road would intersect with any existing road
+    if (!intersects) {
+        for (let edge of edges) {
+            const roadStart = nodes.find(node => node.id === edge.startNode);
+            const roadEnd = nodes.find(node => node.id === edge.endNode);
+            
+            // Skip checking if they share the start node
+            if (startNodeId === edge.startNode || startNodeId === edge.endNode) {
+                continue;
+            }
+            
+            // Check if the lines intersect
+            if (doLinesIntersect(
+                start.x, start.y, mouseX, mouseY,
+                roadStart.x, roadStart.y, roadEnd.x, roadEnd.y
+            )) {
+                intersects = true;
+                break;
+            }
+        }
+    }
+    
+    // Use red color if the road would intersect a node or another road
+    let color = intersects ? 
+        `rgba(255, 0, 0, 0.5)` : 
+        `rgba(0, 100, 255, 0.5)`;
 
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 8;
-        ctx.beginPath();
-        ctx.moveTo(start.x, start.y);
-        ctx.lineTo(mouseX, mouseY);
-        ctx.stroke();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(start.x, start.y);
+    ctx.lineTo(mouseX, mouseY);
+    ctx.stroke();
 }
 
 //add a node at X and Y
@@ -91,7 +217,76 @@ function addNode(x, y, type = "normal") {
 
 function addEdge(startNode, endNode) {
     if (startNode === endNode) return; // Prevent loops
+    
+    const start = nodes.find(node => node.id === startNode);
+    const end = nodes.find(node => node.id === endNode);
+    
+    if (!start || !end) return;
+    
+    // Check if this road would pass through any other node
+    for (let node of nodes) {
+        // Skip the start and end nodes
+        if (node.id === startNode || node.id === endNode) continue;
+        
+        // Check if this node is on the line segment between start and end
+        if (isPointOnLineSegment(start.x, start.y, end.x, end.y, node.x, node.y)) {
+            return; // Don't create the road
+        }
+    }
+    
+    // Check if this road would intersect with any existing road
+    for (let edge of edges) {
+        const roadStart = nodes.find(node => node.id === edge.startNode);
+        const roadEnd = nodes.find(node => node.id === edge.endNode);
+        
+        // Skip checking if they share a node (roads naturally intersect at shared nodes)
+        if (startNode === edge.startNode || startNode === edge.endNode || 
+            endNode === edge.startNode || endNode === edge.endNode) {
+            continue;
+        }
+        
+        // Check if the lines intersect
+        if (doLinesIntersect(
+            start.x, start.y, end.x, end.y,
+            roadStart.x, roadStart.y, roadEnd.x, roadEnd.y
+        )) {
+            return; // Don't create the road
+        }
+    }
+    
+    // If we made it here, the road is valid
     edges.push({ startNode, endNode, traffic: 0});
+}
+
+// Helper function to determine if a point is on a line segment
+function isPointOnLineSegment(x1, y1, x2, y2, px, py, threshold = 5) {
+    // Calculate the distance from point to line segment
+    const lineLength = Math.hypot(x2 - x1, y2 - y1);
+    if (lineLength === 0) return false;
+    
+    // Calculate distance from point to line
+    const t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / (lineLength * lineLength);
+    
+    // Check if the point projection is on the line segment
+    if (t < 0 || t > 1) return false;
+    
+    // Calculate the projected point
+    const projX = x1 + t * (x2 - x1);
+    const projY = y1 + t * (y2 - y1);
+    
+    // Check if the distance from the point to the projection is less than threshold
+    const distance = Math.hypot(px - projX, py - projY);
+    return distance < threshold;
+}
+
+// Add this function to check if two line segments intersect
+function doLinesIntersect(x1, y1, x2, y2, x3, y3, x4, y4) {
+    // Calculate the direction of the lines
+    const uA = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1));
+    const uB = ((x2-x1)*(y1-y3) - (y2-y1)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1));
+
+    // If uA and uB are between 0-1, lines are colliding
+    return (uA >= 0 && uA <= 1 && uB >= 0 && uB <= 1);
 }
 
 // Create initial node
