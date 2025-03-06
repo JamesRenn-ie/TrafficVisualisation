@@ -130,7 +130,7 @@ function drawGraph() {
     edges.forEach(edge => {
         let start = nodes[edge.startNode];
         let end = nodes[edge.endNode];
-        let color = `rgb(${edge.traffic * 255}, ${255 - edge.traffic * 255}, 0)`;
+        let color = `rgb(${edge.traffic *0.1 * 255}, ${255 - edge.traffic*0.1 * 255}, 0)`;
 
         ctx.strokeStyle = color;
         ctx.lineWidth = 8;
@@ -156,15 +156,7 @@ function drawGraph() {
     });
 }
 
-// //update each edges traffic
-// function updateTraffic() {
-//     edges.forEach(edge => {
-//         edge.traffic = Math.random(); // Simulate traffic changes
-//     });
-//     drawGraph();
-// }
-
-setInterval(updateTraffic, 1000);
+setInterval(updateTraffic, 100);
 drawGraph();
 animate();
 
@@ -268,4 +260,4 @@ function spawnCarsFromSources() {
 }
 
 // Run this function every 3 seconds
-setInterval(spawnCarsFromSources, 3000);
+setInterval(spawnCarsFromSources, 10);
