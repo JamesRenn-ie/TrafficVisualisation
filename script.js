@@ -49,7 +49,6 @@ function findClosestNode(x, y, threshold = 10) {
 }
 
 //allows you to draw a road from an existing node that is selected
-//allows you to draw a road from an existing node that is selected
 function addRoadFromSelected() {
     let targetNode = findClosestNode(mouseX, mouseY);
 
