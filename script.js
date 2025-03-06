@@ -15,8 +15,8 @@ canvas.addEventListener("mousemove", (event) => {
     mouseY = event.clientY;
     //draw an uncofirmed road if needed
     if (selectedNode) {
-        let closestNode = findClosestNode(mouseX, mouseY);
-        let targetId = closestNode ? closestNode.id : null;
+        // let closestNode = findClosestNode(mouseX, mouseY);
+        let targetId = selectedNode ? selectedNode.id : null;
         drawGraph();  // Clear and redraw before displaying preview
         displayUncomfirmedRoad(targetId);
     }
@@ -24,26 +24,38 @@ canvas.addEventListener("mousemove", (event) => {
 
 canvas.addEventListener("click", (event) => {
     let clickedNode = findClosestNode(event.clientX, event.clientY);
+    
+    if (selectedNode) {
+        addRoadFromSelected();
+    }
 
     if (clickedNode) {
         selectedNode = clickedNode; // Select the clicked node
-    } else {
-        selectedNode = null; // Deselect if clicking empty space
     }
 });
 
 document.addEventListener("keydown", (event) => {
     if (event.key === "r" || event.key === "R") {
         if (selectedNode) {
-            addRoadFromSelected();
+            selectedNode = null; // set selected to null if 'R' pressed
         }
     }
 });
+
+//used to display an unconfirmed road if one exists
+function animate() {
+    drawGraph();  // Clear and redraw everything
+    if (selectedNode) {
+        displayUncomfirmedRoad(selectedNode.id);
+    }
+    requestAnimationFrame(animate); // Continuously updates the screen
+}
 
 function findClosestNode(x, y, threshold = 10) {
     return nodes.find(node => Math.hypot(node.x - x, node.y - y) < threshold);
 }
 
+//allows you to draw a road from an existing node that is selected
 function addRoadFromSelected() {
     let targetNode = findClosestNode(mouseX, mouseY);
 
@@ -61,12 +73,13 @@ function addRoadFromSelected() {
     drawGraph();
 }
 
+//will draw a blue road for an unconfirmes road
 function displayUncomfirmedRoad(startNodeId) {
     if (startNodeId === null) return;
 
     let start = nodes.find(node => node.id === startNodeId);
     if (!start) return;
-        let color = `rgb(0, 0, 255)`;
+        let color = `rgb(0, 0, 255, 0.5)`; //0.5 is transparency
 
         ctx.strokeStyle = color;
         ctx.lineWidth = 8;
@@ -76,7 +89,7 @@ function displayUncomfirmedRoad(startNodeId) {
         ctx.stroke();
 }
 
-//adding random roads
+//add a node at X and Y
 function addNode(x, y) {
     const id = nodes.length;
     nodes.push({ id, x, y });
@@ -91,6 +104,7 @@ function addEdge(startNode, endNode) {
 // Create initial node
 addNode(canvas.width / 2, canvas.height / 2);
 
+//add random road when add road button clicked
 function addRoad() {
     if (nodes.length === 0) return;
 
@@ -115,6 +129,7 @@ function addRoad() {
     drawGraph();
 }
 
+//draws the road network onto the canvas
 function drawGraph() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -141,6 +156,7 @@ function drawGraph() {
     });
 }
 
+//update each edges traffic
 function updateTraffic() {
     edges.forEach(edge => {
         edge.traffic = Math.random(); // Simulate traffic changes
@@ -150,3 +166,4 @@ function updateTraffic() {
 
 setInterval(updateTraffic, 1000);
 drawGraph();
+animate();
