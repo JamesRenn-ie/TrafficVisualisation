@@ -4,7 +4,7 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background-color: #121212;
+    background-color: #000000;
     color: white;
     font-family: Arial, sans-serif;
 }
@@ -18,6 +18,20 @@ canvas {
     background: black;
     display: block;
     margin-bottom: 10px;
+}
+
+.controls {
+    display: flex;
+    align-items: center; /* Align text and button vertically */
+    gap: 10px; /* Space between text and button */
+}
+
+.box {
+    border: 2px solid black; /* Add a border around each text box */
+    padding: 10px; /* Add space inside the box */
+    display: inline-block; /* Prevent full-width stretching */
+    border-radius: 5px; /* Round the corners */
+    background-color: #575757; /* Light background for visibility */
 }
 
 
