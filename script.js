@@ -13,6 +13,13 @@ let mouseX = 0, mouseY = 0;
 canvas.addEventListener("mousemove", (event) => {
     mouseX = event.clientX;
     mouseY = event.clientY;
+    //draw an uncofirmed road if needed
+    if (selectedNode) {
+        let closestNode = findClosestNode(mouseX, mouseY);
+        let targetId = closestNode ? closestNode.id : null;
+        drawGraph();  // Clear and redraw before displaying preview
+        displayUncomfirmedRoad(targetId);
+    }
 });
 
 canvas.addEventListener("click", (event) => {
@@ -52,6 +59,21 @@ function addRoadFromSelected() {
     }
 
     drawGraph();
+}
+
+function displayUncomfirmedRoad(startNodeId) {
+    if (startNodeId === null) return;
+
+    let start = nodes.find(node => node.id === startNodeId);
+    if (!start) return;
+        let color = `rgb(0, 0, 255)`;
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(mouseX, mouseY);
+        ctx.stroke();
 }
 
 //adding random roads
