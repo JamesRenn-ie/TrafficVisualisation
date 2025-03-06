@@ -255,14 +255,16 @@ function updateTraffic() {
 
 //spawn a car at all source nodes
 function spawnCarsFromSources() {
-    nodes.filter(node => node.type === "source").forEach(source => {
-        let targetNode;
-        do {
-            targetNode = nodes[Math.floor(Math.random() * nodes.length)];
-        } while (targetNode.id === source.id);
+    if (!(edges.length === 0)) {
+        nodes.filter(node => node.type === "source").forEach(source => {
+            let targetNode;
+            do {
+                targetNode = nodes[Math.floor(Math.random() * nodes.length)];
+            } while (targetNode.id === source.id);
 
-        cars.push(new Car(source.id, targetNode.id));
-    });
+            cars.push(new Car(source.id, targetNode.id));
+        });
+    }
 }
 
 // Run this function every 3 seconds
