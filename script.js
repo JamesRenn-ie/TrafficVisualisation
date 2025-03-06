@@ -13,13 +13,6 @@ let mouseX = 0, mouseY = 0;
 canvas.addEventListener("mousemove", (event) => {
     mouseX = event.clientX;
     mouseY = event.clientY;
-    //draw an uncofirmed road if needed
-    if (selectedNode) {
-        // let closestNode = findClosestNode(mouseX, mouseY);
-        let targetId = selectedNode ? selectedNode.id : null;
-        drawGraph();  // Clear and redraw before displaying preview
-        displayUncomfirmedRoad(targetId);
-    }
 });
 
 canvas.addEventListener("click", (event) => {
@@ -79,7 +72,7 @@ function displayUncomfirmedRoad(startNodeId) {
 
     let start = nodes.find(node => node.id === startNodeId);
     if (!start) return;
-        let color = `rgb(0, 0, 255, 0.5)`; //0.5 is transparency
+        let color = `rgb(0, 100, 255, 0.5)`; //0.5 is transparency
 
         ctx.strokeStyle = color;
         ctx.lineWidth = 8;
@@ -90,19 +83,19 @@ function displayUncomfirmedRoad(startNodeId) {
 }
 
 //add a node at X and Y
-function addNode(x, y) {
+function addNode(x, y, type = "normal") {
     const id = nodes.length;
-    nodes.push({ id, x, y });
+    nodes.push({ id, x, y, type });
     return id;
 }
 
 function addEdge(startNode, endNode) {
     if (startNode === endNode) return; // Prevent loops
-    edges.push({ startNode, endNode, traffic: Math.random() });
+    edges.push({ startNode, endNode, traffic: 0});
 }
 
 // Create initial node
-addNode(canvas.width / 2, canvas.height / 2);
+addNode(canvas.width / 2, canvas.height / 2, "source");
 
 //add random road when add road button clicked
 function addRoad() {
@@ -149,21 +142,128 @@ function drawGraph() {
 
     // Draw nodes (intersections)
     nodes.forEach(node => {
-        ctx.fillStyle = "white";
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, 5, 0, Math.PI * 2);
-        ctx.fill();
+        if (node.type === "normal"){
+            ctx.fillStyle = "white";
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, 5, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            ctx.fillStyle = "green";
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, 5, 0, Math.PI * 2);
+            ctx.fill();
+        }
     });
 }
 
-//update each edges traffic
-function updateTraffic() {
-    edges.forEach(edge => {
-        edge.traffic = Math.random(); // Simulate traffic changes
-    });
-    drawGraph();
-}
+// //update each edges traffic
+// function updateTraffic() {
+//     edges.forEach(edge => {
+//         edge.traffic = Math.random(); // Simulate traffic changes
+//     });
+//     drawGraph();
+// }
 
 setInterval(updateTraffic, 1000);
 drawGraph();
 animate();
+
+
+//car and traffic stuff ----------------------------
+class Car {
+    constructor(startNode, targetNode) {
+        this.currentNode = startNode;
+        this.targetNode = targetNode;
+        this.path = findShortestPath(startNode, targetNode); // Implement this next
+    }
+
+    move() {
+        if (this.path.length > 1) {
+            this.currentNode = this.path.shift(); // Move to next node
+        } else {
+            // Remove car when it reaches the destination
+            cars = cars.filter(car => car !== this);
+        }
+    }
+}
+
+function findShortestPath(startId, targetId) {
+    let distances = {};
+    let prev = {};
+    let queue = new Set(nodes.map(node => node.id));
+
+    nodes.forEach(node => distances[node.id] = Infinity);
+    distances[startId] = 0;
+
+    while (queue.size > 0) {
+        let minNode = [...queue].reduce((a, b) => distances[a] < distances[b] ? a : b);
+        queue.delete(minNode);
+
+        if (minNode === targetId) break;
+
+        edges.filter(edge => edge.startNode === minNode || edge.endNode === minNode)
+             .forEach(edge => {
+                let neighbor = edge.startNode === minNode ? edge.endNode : edge.startNode;
+                if (!queue.has(neighbor)) return;
+
+                let newDist = distances[minNode] + 1; // Treat all roads as equal length
+                if (newDist < distances[neighbor]) {
+                    distances[neighbor] = newDist;
+                    prev[neighbor] = minNode;
+                }
+            });
+    }
+
+    // Reconstruct path
+    let path = [];
+    let step = targetId;
+    while (step !== undefined) {
+        path.unshift(step);
+        step = prev[step];
+    }
+    return path;
+}
+
+let cars = []; // list of all cars
+// Spawn a car from a random node to another random node
+function spawnCar() {
+    let startNode = nodes[Math.floor(Math.random() * nodes.length)];
+    let targetNode;
+    do {
+        targetNode = nodes[Math.floor(Math.random() * nodes.length)];
+    } while (targetNode.id === startNode.id);
+
+    cars.push(new Car(startNode.id, targetNode.id));
+}
+
+// Move all cars once per update cycle
+function updateTraffic() {
+    cars.forEach(car => car.move());
+
+    // Recalculate traffic
+    edges.forEach(edge => edge.traffic = 0);
+    cars.forEach(car => {
+        let road = edges.find(edge => 
+            (edge.startNode === car.currentNode && edge.endNode === car.path[0]) ||
+            (edge.endNode === car.currentNode && edge.startNode === car.path[0])
+        );
+        if (road) road.traffic += 1;
+    });
+
+    drawGraph();
+}
+
+//spawn a car at all source nodes
+function spawnCarsFromSources() {
+    nodes.filter(node => node.type === "source").forEach(source => {
+        let targetNode;
+        do {
+            targetNode = nodes[Math.floor(Math.random() * nodes.length)];
+        } while (targetNode.id === source.id);
+
+        cars.push(new Car(source.id, targetNode.id));
+    });
+}
+
+// Run this function every 3 seconds
+setInterval(spawnCarsFromSources, 3000);
