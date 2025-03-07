@@ -29,9 +29,7 @@ canvas.addEventListener("click", (event) => {
 
 document.addEventListener("keydown", (event) => {
     if (event.key === "r" || event.key === "R") {
-        if (selectedNode) {
-            selectedNode = null; // set selected to null if 'R' pressed
-        }
+        deselectCurrentNode();
     }
 });
 
@@ -348,6 +346,12 @@ function drawGraph() {
             ctx.fill();
         }
     });
+}
+
+function deselectCurrentNode() {
+    if(selectedNode){
+        selectedNode = null;
+    }
 }
 
 setInterval(updateTraffic, 100);
