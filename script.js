@@ -50,23 +50,33 @@ function findClosestNode(x, y, threshold = 10) {
 function addRoadFromSelected() {
     let targetNode = findClosestNode(mouseX, mouseY);
 
-    if (targetNode && targetNode.id !== selectedNode.id) {
-        // If the cursor is on an existing node, connect to it
-        if (canCreateRoad(selectedNode.id, targetNode.id)) {
-            addEdge(selectedNode.id, targetNode.id);
-            selectedNode = targetNode; // Set new selection to this node
-        }
-    } else {
-        // Check if a road to this new position would be valid
-        if (canCreateRoadToPosition(selectedNode.id, mouseX, mouseY)) {
-            // Create a new node and connect to it
-            let newNode = addNode(mouseX, mouseY);
-            addEdge(selectedNode.id, newNode);
-            selectedNode = nodes[newNode]; // Set the new node as the selected node
+    if (isRoadLongEnough(selectedNode.x, selectedNode.y, mouseX, mouseY)){
+        if (targetNode && targetNode.id !== selectedNode.id) {
+            // If the cursor is on an existing node, connect to it
+            if (canCreateRoad(selectedNode.id, targetNode.id)) {
+                addEdge(selectedNode.id, targetNode.id);
+                selectedNode = targetNode; // Set new selection to this node
+            }
+        } else {
+            // Check if a road to this new position would be valid
+            if (canCreateRoadToPosition(selectedNode.id, mouseX, mouseY)) {
+                // Create a new node and connect to it
+                let newNode = addNode(mouseX, mouseY);
+                addEdge(selectedNode.id, newNode);
+                selectedNode = nodes[newNode]; // Set the new node as the selected node
+            }
         }
     }
 
     drawGraph();
+}
+
+
+function isRoadLongEnough(startX, startY, endX, endY) {
+    const minLength = 20; // Set the minimum road length
+    let dx = endX - startX;
+    let dy = endY - startY;
+    return Math.sqrt(dx * dx + dy * dy) >= minLength;
 }
 
 // Helper function to check if a road can be created between two existing nodes
@@ -110,7 +120,7 @@ function canCreateRoad(startNodeId, endNodeId) {
     return true;
 }
 
-// Helper function to check if a road can be created to a new position
+// Helper function to check if a road can be created to a new position (unconnected at one end)
 function canCreateRoadToPosition(startNodeId, endX, endY) {
     const start = nodes.find(node => node.id === startNodeId);
     
@@ -156,7 +166,7 @@ function displayUncomfirmedRoad(startNodeId) {
     let start = nodes.find(node => node.id === startNodeId);
     if (!start) return;
     
-    let intersects = false;
+    let drawable = true;
     
     // Check if this potential road would pass through any other node
     for (let node of nodes) {
@@ -165,13 +175,13 @@ function displayUncomfirmedRoad(startNodeId) {
         
         // Check if this node is on the line segment between start and mouse
         if (isPointOnLineSegment(start.x, start.y, mouseX, mouseY, node.x, node.y)) {
-            intersects = true;
+            drawable = false;
             break;
         }
     }
     
     // Check if this potential road would intersect with any existing road
-    if (!intersects) {
+    if (drawable) {
         for (let edge of edges) {
             const roadStart = nodes.find(node => node.id === edge.startNode);
             const roadEnd = nodes.find(node => node.id === edge.endNode);
@@ -186,16 +196,20 @@ function displayUncomfirmedRoad(startNodeId) {
                 start.x, start.y, mouseX, mouseY,
                 roadStart.x, roadStart.y, roadEnd.x, roadEnd.y
             )) {
-                intersects = true;
+                drawable = false;
                 break;
             }
         }
+        if (!isRoadLongEnough(start.x, start.y, mouseX, mouseY)){
+            drawable = false;
+        }
     }
+
     
     // Use red color if the road would intersect a node or another road
-    let color = intersects ? 
-        `rgba(255, 0, 0, 0.5)` : 
-        `rgba(0, 100, 255, 0.5)`;
+    let color = drawable ? 
+        `rgba(0, 100, 255, 0.5)`:
+        `rgba(255, 0, 0, 0.5)`;
 
     ctx.strokeStyle = color;
     ctx.lineWidth = 8;
