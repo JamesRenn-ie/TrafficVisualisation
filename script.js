@@ -1,7 +1,7 @@
 const canvas = document.getElementById("trafficCanvas");
 const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
-canvas.height = window.innerHeight-100;
+canvas.height = window.innerHeight-110;
 
 let nodes = []; // Stores intersections
 let edges = []; // Stores roads
