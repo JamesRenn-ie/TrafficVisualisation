@@ -1,16 +1,12 @@
 const canvas = document.getElementById("trafficCanvas");
 const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
-<<<<<<< HEAD
 canvas.height = window.innerHeight;
 
 window.addEventListener('resize', () => {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 });
-=======
-canvas.height = window.innerHeight-110;
->>>>>>> 86431375147f6b35362e65953166e5a9deed1f3c
 
 let nodes = []; // Stores intersections
 let edges = []; // Stores roads
@@ -35,7 +31,7 @@ class VisualParticle {
     draw(ctx) {
         const x = this.startX + (this.endX - this.startX) * this.progress;
         const y = this.startY + (this.endY - this.startY) * this.progress;
-        
+
         ctx.save();
         ctx.fillStyle = this.color;
         ctx.shadowBlur = 5;
@@ -58,7 +54,7 @@ canvas.addEventListener("mousemove", (event) => {
 
 canvas.addEventListener("click", (event) => {
     let clickedNode = findClosestNode(event.clientX, event.clientY);
-    
+
     if (selectedNode) {
         addRoadFromSelected();
     }
@@ -83,7 +79,7 @@ function animate() {
     });
 
     drawGraph();  // Clear and redraw everything
-    
+
     // Update and draw visual particles
     visualParticles = visualParticles.filter(p => {
         const active = p.update();
@@ -96,7 +92,7 @@ function animate() {
         if (edge.smoothedTraffic > 0.1 && Math.random() < edge.smoothedTraffic * 0.05) {
             let start = nodes[edge.startNode];
             let end = nodes[edge.endNode];
-            
+
             // Determine color based on smoothed traffic level
             let trafficFactor = Math.min(edge.smoothedTraffic / 10, 1);
             let r = Math.floor(trafficFactor * 255);
@@ -122,7 +118,7 @@ function findClosestNode(x, y, threshold = 10) {
 function addRoadFromSelected() {
     let targetNode = findClosestNode(mouseX, mouseY);
 
-    if (isRoadLongEnough(selectedNode.x, selectedNode.y, mouseX, mouseY)){
+    if (isRoadLongEnough(selectedNode.x, selectedNode.y, mouseX, mouseY)) {
         if (targetNode && targetNode.id !== selectedNode.id) {
             // If the cursor is on an existing node, connect to it
             if (canCreateRoad(selectedNode.id, targetNode.id)) {
@@ -155,31 +151,31 @@ function isRoadLongEnough(startX, startY, endX, endY) {
 function canCreateRoad(startNodeId, endNodeId) {
     const start = nodes.find(node => node.id === startNodeId);
     const end = nodes.find(node => node.id === endNodeId);
-    
+
     if (!start || !end) return false;
-    
+
     // Check if this road would pass through any other node
     for (let node of nodes) {
         // Skip the start and end nodes
         if (node.id === startNodeId || node.id === endNodeId) continue;
-        
+
         // Check if this node is on the line segment between start and end
         if (isPointOnLineSegment(start.x, start.y, end.x, end.y, node.x, node.y)) {
             return false;
         }
     }
-    
+
     // Check if this road would intersect with any existing road
     for (let edge of edges) {
         const roadStart = nodes.find(node => node.id === edge.startNode);
         const roadEnd = nodes.find(node => node.id === edge.endNode);
-        
+
         // Skip checking if they share a node (roads naturally intersect at shared nodes)
-        if (startNodeId === edge.startNode || startNodeId === edge.endNode || 
+        if (startNodeId === edge.startNode || startNodeId === edge.endNode ||
             endNodeId === edge.startNode || endNodeId === edge.endNode) {
             continue;
         }
-        
+
         // Check if the lines intersect
         if (doLinesIntersect(
             start.x, start.y, end.x, end.y,
@@ -188,37 +184,37 @@ function canCreateRoad(startNodeId, endNodeId) {
             return false;
         }
     }
-    
+
     return true;
 }
 
 // Helper function to check if a road can be created to a new position (unconnected at one end)
 function canCreateRoadToPosition(startNodeId, endX, endY) {
     const start = nodes.find(node => node.id === startNodeId);
-    
+
     if (!start) return false;
-    
+
     // Check if this road would pass through any other node
     for (let node of nodes) {
         // Skip the start node
         if (node.id === startNodeId) continue;
-        
+
         // Check if this node is on the line segment between start and new position
         if (isPointOnLineSegment(start.x, start.y, endX, endY, node.x, node.y)) {
             return false;
         }
     }
-    
+
     // Check if this road would intersect with any existing road
     for (let edge of edges) {
         const roadStart = nodes.find(node => node.id === edge.startNode);
         const roadEnd = nodes.find(node => node.id === edge.endNode);
-        
+
         // Skip checking if they share the start node
         if (startNodeId === edge.startNode || startNodeId === edge.endNode) {
             continue;
         }
-        
+
         // Check if the lines intersect
         if (doLinesIntersect(
             start.x, start.y, endX, endY,
@@ -227,7 +223,7 @@ function canCreateRoadToPosition(startNodeId, endX, endY) {
             return false;
         }
     }
-    
+
     return true;
 }
 
@@ -237,32 +233,32 @@ function displayUncomfirmedRoad(startNodeId) {
 
     let start = nodes.find(node => node.id === startNodeId);
     if (!start) return;
-    
+
     let drawable = true;
-    
+
     // Check if this potential road would pass through any other node
     for (let node of nodes) {
         // Skip the start node
         if (node.id === startNodeId) continue;
-        
+
         // Check if this node is on the line segment between start and mouse
         if (isPointOnLineSegment(start.x, start.y, mouseX, mouseY, node.x, node.y)) {
             drawable = false;
             break;
         }
     }
-    
+
     // Check if this potential road would intersect with any existing road
     if (drawable) {
         for (let edge of edges) {
             const roadStart = nodes.find(node => node.id === edge.startNode);
             const roadEnd = nodes.find(node => node.id === edge.endNode);
-            
+
             // Skip checking if they share the start node
             if (startNodeId === edge.startNode || startNodeId === edge.endNode) {
                 continue;
             }
-            
+
             // Check if the lines intersect
             if (doLinesIntersect(
                 start.x, start.y, mouseX, mouseY,
@@ -272,15 +268,15 @@ function displayUncomfirmedRoad(startNodeId) {
                 break;
             }
         }
-        if (!isRoadLongEnough(start.x, start.y, mouseX, mouseY)){
+        if (!isRoadLongEnough(start.x, start.y, mouseX, mouseY)) {
             drawable = false;
         }
     }
 
-    
+
     // Use red color if the road would intersect a node or another road
-    let color = drawable ? 
-        `rgba(0, 242, 255, 0.5)`:
+    let color = drawable ?
+        `rgba(0, 242, 255, 0.5)` :
         `rgba(255, 0, 85, 0.5)`;
 
     ctx.save();
@@ -305,34 +301,34 @@ function addNode(x, y, type = "normal") {
 
 function addEdge(startNode, endNode) {
     if (startNode === endNode) return; // Prevent loops
-    
+
     const start = nodes.find(node => node.id === startNode);
     const end = nodes.find(node => node.id === endNode);
-    
+
     if (!start || !end) return;
-    
+
     // Check if this road would pass through any other node
     for (let node of nodes) {
         // Skip the start and end nodes
         if (node.id === startNode || node.id === endNode) continue;
-        
+
         // Check if this node is on the line segment between start and end
         if (isPointOnLineSegment(start.x, start.y, end.x, end.y, node.x, node.y)) {
             return; // Don't create the road
         }
     }
-    
+
     // Check if this road would intersect with any existing road
     for (let edge of edges) {
         const roadStart = nodes.find(node => node.id === edge.startNode);
         const roadEnd = nodes.find(node => node.id === edge.endNode);
-        
+
         // Skip checking if they share a node (roads naturally intersect at shared nodes)
-        if (startNode === edge.startNode || startNode === edge.endNode || 
+        if (startNode === edge.startNode || startNode === edge.endNode ||
             endNode === edge.startNode || endNode === edge.endNode) {
             continue;
         }
-        
+
         // Check if the lines intersect
         if (doLinesIntersect(
             start.x, start.y, end.x, end.y,
@@ -341,9 +337,9 @@ function addEdge(startNode, endNode) {
             return; // Don't create the road
         }
     }
-    
+
     // If we made it here, the road is valid
-    edges.push({ startNode, endNode, traffic: 0, smoothedTraffic: 0});
+    edges.push({ startNode, endNode, traffic: 0, smoothedTraffic: 0 });
 }
 
 // Helper function to determine if a point is on a line segment
@@ -351,17 +347,17 @@ function isPointOnLineSegment(x1, y1, x2, y2, px, py, threshold = 5) {
     // Calculate the distance from point to line segment
     const lineLength = Math.hypot(x2 - x1, y2 - y1);
     if (lineLength === 0) return false;
-    
+
     // Calculate distance from point to line
     const t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / (lineLength * lineLength);
-    
+
     // Check if the point projection is on the line segment
     if (t < 0 || t > 1) return false;
-    
+
     // Calculate the projected point
     const projX = x1 + t * (x2 - x1);
     const projY = y1 + t * (y2 - y1);
-    
+
     // Check if the distance from the point to the projection is less than threshold
     const distance = Math.hypot(px - projX, py - projY);
     return distance < threshold;
@@ -370,8 +366,8 @@ function isPointOnLineSegment(x1, y1, x2, y2, px, py, threshold = 5) {
 // Add this function to check if two line segments intersect
 function doLinesIntersect(x1, y1, x2, y2, x3, y3, x4, y4) {
     // Calculate the direction of the lines
-    const uA = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1));
-    const uB = ((x2-x1)*(y1-y3) - (y2-y1)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1));
+    const uA = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
+    const uB = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
 
     // If uA and uB are between 0-1, lines are colliding
     return (uA >= 0 && uA <= 1 && uB >= 0 && uB <= 1);
@@ -413,7 +409,7 @@ function drawGraph() {
     edges.forEach(edge => {
         let start = nodes[edge.startNode];
         let end = nodes[edge.endNode];
-        
+
         // Base road (faint)
         ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
         ctx.lineWidth = 2;
@@ -447,14 +443,14 @@ function drawGraph() {
     // Draw nodes (intersections)
     const time = Date.now() * 0.005;
     nodes.forEach(node => {
-        if (node.type === "normal"){
+        if (node.type === "normal") {
             ctx.save();
             ctx.fillStyle = "rgba(0, 242, 255, 0.1)";
             ctx.strokeStyle = "#00f2ff";
             ctx.lineWidth = 2;
             ctx.shadowBlur = 10;
             ctx.shadowColor = "#00f2ff";
-            
+
             ctx.beginPath();
             ctx.arc(node.x, node.y, 6, 0, Math.PI * 2);
             ctx.fill();
@@ -467,7 +463,7 @@ function drawGraph() {
             ctx.fillStyle = "#00f2ff";
             ctx.shadowBlur = pulse;
             ctx.shadowColor = "#00f2ff";
-            
+
             ctx.translate(node.x, node.y);
             ctx.rotate(Math.PI / 4);
             ctx.fillRect(-6, -6, 12, 12);
@@ -477,7 +473,7 @@ function drawGraph() {
 }
 
 function deselectCurrentNode() {
-    if(selectedNode){
+    if (selectedNode) {
         selectedNode = null;
     }
 }
@@ -520,7 +516,7 @@ function findShortestPath(startId, targetId) {
         if (minNode === targetId) break;
 
         edges.filter(edge => edge.startNode === minNode || edge.endNode === minNode)
-             .forEach(edge => {
+            .forEach(edge => {
                 let neighbor = edge.startNode === minNode ? edge.endNode : edge.startNode;
                 if (!queue.has(neighbor)) return;
 
@@ -561,7 +557,7 @@ function updateTraffic() {
     // Recalculate traffic
     edges.forEach(edge => edge.traffic = 0);
     cars.forEach(car => {
-        let road = edges.find(edge => 
+        let road = edges.find(edge =>
             (edge.startNode === car.currentNode && edge.endNode === car.path[0]) ||
             (edge.endNode === car.currentNode && edge.startNode === car.path[0])
         );
