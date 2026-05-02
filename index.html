@@ -3,17 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Traffic Flow Visualization</title>
+    <title>Traffic Flow Visualization | CyberHUD</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <canvas id="trafficCanvas"></canvas>
     <div class="controls">
-        <!-- <div class="box">Press "Add road" to add a random road!</div>
-        <button onclick="addRoad()">Add Road</button> -->
-        <div class="box">Click on a node to start drawing new roads, and click again to confirm.</div>
-        <div class="box">Press 'R' to cancel new road</div>
-        <button onclick="deselectCurrentNode()">Or click here!</div> 
+        <div class="hud-box">
+            <div class="hud-title">SYSTEM STATUS</div>
+            <div class="hud-text">CLICK NODE TO INITIATE LINK</div>
+            <div class="hud-text">CLICK AGAIN TO CONFIRM ROAD</div>
+            <div class="hud-text">PRESS 'R' TO TERMINATE SELECTION</div>
+            <button class="hud-button" onclick="deselectCurrentNode()">ABORT SELECTION</button>
+            <div class="hud-footer">
+                <a href="https://github.com/JamesRenn-ie/TrafficVisualisation" target="_blank" class="hud-link">VIEW ON GITHUB</a>
+            </div>
+        </div>
     </div>  
     <script src="script.js"></script>
 </body>

@@ -1,10 +1,47 @@
 const canvas = document.getElementById("trafficCanvas");
 const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
-canvas.height = window.innerHeight-100;
+canvas.height = window.innerHeight;
+
+window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+});
 
 let nodes = []; // Stores intersections
 let edges = []; // Stores roads
+let visualParticles = []; // Visual-only particles for traffic flow
+
+class VisualParticle {
+    constructor(startX, startY, endX, endY, color) {
+        this.startX = startX;
+        this.startY = startY;
+        this.endX = endX;
+        this.endY = endY;
+        this.progress = 0;
+        this.speed = 0.01 + Math.random() * 0.02;
+        this.color = color;
+    }
+
+    update() {
+        this.progress += this.speed;
+        return this.progress < 1;
+    }
+
+    draw(ctx) {
+        const x = this.startX + (this.endX - this.startX) * this.progress;
+        const y = this.startY + (this.endY - this.startY) * this.progress;
+        
+        ctx.save();
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 5;
+        ctx.shadowColor = this.color;
+        ctx.beginPath();
+        ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
 
 // adding roads at mouse cursor when R pressed
 let selectedNode = null;
@@ -35,7 +72,38 @@ document.addEventListener("keydown", (event) => {
 
 //used to display an unconfirmed road if one exists
 function animate() {
+    // Smoothen traffic values
+    edges.forEach(edge => {
+        if (edge.smoothedTraffic === undefined) edge.smoothedTraffic = 0;
+        edge.smoothedTraffic += (edge.traffic - edge.smoothedTraffic) * 0.05;
+    });
+
     drawGraph();  // Clear and redraw everything
+    
+    // Update and draw visual particles
+    visualParticles = visualParticles.filter(p => {
+        const active = p.update();
+        if (active) p.draw(ctx);
+        return active;
+    });
+
+    // Spawn new particles based on smoothed traffic
+    edges.forEach(edge => {
+        if (edge.smoothedTraffic > 0.1 && Math.random() < edge.smoothedTraffic * 0.05) {
+            let start = nodes[edge.startNode];
+            let end = nodes[edge.endNode];
+            
+            // Determine color based on smoothed traffic level
+            let trafficFactor = Math.min(edge.smoothedTraffic / 10, 1);
+            let r = Math.floor(trafficFactor * 255);
+            let g = Math.floor(255 - trafficFactor * 255);
+            let b = Math.floor(trafficFactor * 100);
+            let color = `rgb(${r}, ${g}, ${b})`;
+
+            visualParticles.push(new VisualParticle(start.x, start.y, end.x, end.y, color));
+        }
+    });
+
     if (selectedNode) {
         displayUncomfirmedRoad(selectedNode.id);
     }
@@ -159,7 +227,7 @@ function canCreateRoadToPosition(startNodeId, endX, endY) {
     return true;
 }
 
-//will draw a blue road for an unconfirmes road
+//will draw a blue road for an unconfirmed roads, or read if invalid
 function displayUncomfirmedRoad(startNodeId) {
     if (startNodeId === null) return;
 
@@ -208,15 +276,20 @@ function displayUncomfirmedRoad(startNodeId) {
     
     // Use red color if the road would intersect a node or another road
     let color = drawable ? 
-        `rgba(0, 100, 255, 0.5)`:
-        `rgba(255, 0, 0, 0.5)`;
+        `rgba(0, 242, 255, 0.5)`:
+        `rgba(255, 0, 85, 0.5)`;
 
+    ctx.save();
     ctx.strokeStyle = color;
-    ctx.lineWidth = 8;
+    ctx.lineWidth = 4;
+    ctx.setLineDash([10, 5]); // Dashed line for unconfirmed
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = color;
     ctx.beginPath();
     ctx.moveTo(start.x, start.y);
     ctx.lineTo(mouseX, mouseY);
     ctx.stroke();
+    ctx.restore();
 }
 
 //add a node at X and Y
@@ -266,7 +339,7 @@ function addEdge(startNode, endNode) {
     }
     
     // If we made it here, the road is valid
-    edges.push({ startNode, endNode, traffic: 0});
+    edges.push({ startNode, endNode, traffic: 0, smoothedTraffic: 0});
 }
 
 // Helper function to determine if a point is on a line segment
@@ -332,32 +405,69 @@ function addRoad() {
 function drawGraph() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw edges (roads)
+    // Draw edges (roads) - Base layer
     edges.forEach(edge => {
         let start = nodes[edge.startNode];
         let end = nodes[edge.endNode];
-        let color = `rgb(${edge.traffic *0.1 * 255}, ${255 - edge.traffic*0.1 * 255}, 0)`;
-
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 8;
+        
+        // Base road (faint)
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+        ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(start.x, start.y);
         ctx.lineTo(end.x, end.y);
         ctx.stroke();
+
+        // Traffic glow layer
+        if (edge.smoothedTraffic > 0.1) {
+            let trafficFactor = Math.min(edge.smoothedTraffic / 10, 1);
+            // Green to Red neon gradient
+            let r = Math.floor(trafficFactor * 255);
+            let g = Math.floor(255 - trafficFactor * 255);
+            let b = Math.floor(trafficFactor * 100);
+            let color = `rgb(${r}, ${g}, ${b})`;
+
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 4;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = color;
+            ctx.beginPath();
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(end.x, end.y);
+            ctx.stroke();
+            ctx.restore();
+        }
     });
 
     // Draw nodes (intersections)
+    const time = Date.now() * 0.005;
     nodes.forEach(node => {
         if (node.type === "normal"){
-            ctx.fillStyle = "white";
+            ctx.save();
+            ctx.fillStyle = "rgba(0, 242, 255, 0.1)";
+            ctx.strokeStyle = "#00f2ff";
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "#00f2ff";
+            
             ctx.beginPath();
-            ctx.arc(node.x, node.y, 5, 0, Math.PI * 2);
+            ctx.arc(node.x, node.y, 6, 0, Math.PI * 2);
             ctx.fill();
+            ctx.stroke();
+            ctx.restore();
         } else {
-            ctx.fillStyle = "green";
-            ctx.beginPath();
-            ctx.arc(node.x, node.y, 5, 0, Math.PI * 2);
-            ctx.fill();
+            // Root Node / Source (Diamond)
+            ctx.save();
+            const pulse = Math.sin(time) * 5 + 15;
+            ctx.fillStyle = "#00f2ff";
+            ctx.shadowBlur = pulse;
+            ctx.shadowColor = "#00f2ff";
+            
+            ctx.translate(node.x, node.y);
+            ctx.rotate(Math.PI / 4);
+            ctx.fillRect(-6, -6, 12, 12);
+            ctx.restore();
         }
     });
 }
