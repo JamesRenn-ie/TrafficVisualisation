@@ -89,16 +89,12 @@ function animate() {
 
     // Spawn new particles based on smoothed traffic
     edges.forEach(edge => {
-        if (edge.smoothedTraffic > 0.1 && Math.random() < edge.smoothedTraffic * 0.05) {
+        if (edge.smoothedTraffic > 0.01 && Math.random() < edge.smoothedTraffic * 0.05) {
             let start = nodes[edge.startNode];
             let end = nodes[edge.endNode];
 
             // Determine color based on smoothed traffic level
-            let trafficFactor = Math.min(edge.smoothedTraffic / 10, 1);
-            let r = Math.floor(trafficFactor * 255);
-            let g = Math.floor(255 - trafficFactor * 255);
-            let b = Math.floor(trafficFactor * 100);
-            let color = `rgb(${r}, ${g}, ${b})`;
+            let color = getTrafficColor(edge.smoothedTraffic);
 
             visualParticles.push(new VisualParticle(start.x, start.y, end.x, end.y, color));
         }
@@ -401,6 +397,17 @@ function addRoad() {
     drawGraph();
 }
 
+function getTrafficColor(smoothedTraffic, alpha = 1) {
+    let trafficFactor = Math.min(Math.max(smoothedTraffic, 0) / 10, 1);
+    if (isNaN(trafficFactor)) trafficFactor = 0;
+
+    let r = Math.floor(trafficFactor * 255);
+    let g = Math.floor(255 - trafficFactor * 255);
+    let b = Math.floor(trafficFactor * 100);
+
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 //draws the road network onto the canvas
 function drawGraph() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -410,27 +417,24 @@ function drawGraph() {
         let start = nodes[edge.startNode];
         let end = nodes[edge.endNode];
 
-        // Base road (faint)
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
+        // Base road (faint) - slightly more visible
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(start.x, start.y);
         ctx.lineTo(end.x, end.y);
         ctx.stroke();
 
-        // Traffic glow layer
-        if (edge.smoothedTraffic > 0.1) {
-            let trafficFactor = Math.min(edge.smoothedTraffic / 10, 1);
-            // Green to Red neon gradient
-            let r = Math.floor(trafficFactor * 255);
-            let g = Math.floor(255 - trafficFactor * 255);
-            let b = Math.floor(trafficFactor * 100);
-            let color = `rgb(${r}, ${g}, ${b})`;
+        // Traffic glow layer - Smooth alpha fade
+        if (edge.smoothedTraffic > 0.01) {
+            // Alpha scales from 0 to 1 based on smoothedTraffic (reaching max at 2.0)
+            let alpha = Math.min(edge.smoothedTraffic / 2, 1);
+            let color = getTrafficColor(edge.smoothedTraffic, alpha);
 
             ctx.save();
             ctx.strokeStyle = color;
             ctx.lineWidth = 4;
-            ctx.shadowBlur = 15;
+            ctx.shadowBlur = 15 * alpha;
             ctx.shadowColor = color;
             ctx.beginPath();
             ctx.moveTo(start.x, start.y);
